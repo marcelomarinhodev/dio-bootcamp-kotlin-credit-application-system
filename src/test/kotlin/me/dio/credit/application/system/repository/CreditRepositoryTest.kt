@@ -1,9 +1,9 @@
 package me.dio.credit.application.system.repository
 
-import me.dio.credit.application.system.entity.Address
 import me.dio.credit.application.system.entity.Credit
 import me.dio.credit.application.system.entity.Customer
-import org.assertj.core.api.Assertions
+import me.dio.credit.application.system.utils.TestsUtils
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -11,88 +11,64 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager
 import org.springframework.test.context.ActiveProfiles
-import java.math.BigDecimal
-import java.time.LocalDate
-import java.time.Month
 import java.util.*
 
-@ActiveProfiles("test")
+@ActiveProfiles("tests")
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class CreditRepositoryTest {
-  @Autowired lateinit var creditRepository: CreditRepository
-  @Autowired lateinit var testEntityManager: TestEntityManager
 
-  private lateinit var customer: Customer
-  private lateinit var credit1: Credit
-  private lateinit var credit2: Credit
+    @Autowired
+    lateinit var creditRepository: CreditRepository
 
-  @BeforeEach fun setup () {
-    customer = testEntityManager.persist(buildCustomer())
-    credit1 = testEntityManager.persist(buildCredit(customer = customer))
-    credit2 = testEntityManager.persist(buildCredit(customer = customer))
-  }
+    @Autowired
+    lateinit var testEntityManager: TestEntityManager
 
-  @Test
-  fun `should find credit by credit code`() {
-    //given
-    val creditCode1 = UUID.fromString("aa547c0f-9a6a-451f-8c89-afddce916a29")
-    val creditCode2 = UUID.fromString("49f740be-46a7-449b-84e7-ff5b7986d7ef")
-    credit1.creditCode = creditCode1
-    credit2.creditCode = creditCode2
-    //when
-    val fakeCredit1: Credit = creditRepository.findByCreditCode(creditCode1)!!
-    val fakeCredit2: Credit = creditRepository.findByCreditCode(creditCode2)!!
-    //then
-    Assertions.assertThat(fakeCredit1).isNotNull
-    Assertions.assertThat(fakeCredit2).isNotNull
-    Assertions.assertThat(fakeCredit1).isSameAs(credit1)
-    Assertions.assertThat(fakeCredit2).isSameAs(credit2)
-  }
+    private lateinit var mockedCustomer: Customer
+    private lateinit var mockCreditOne: Credit
+    private lateinit var mockCreditTwo: Credit
 
-  @Test
-  fun `should find all credits by customer id`() {
-    //given
-    val customerId: Long =  1L
-    //when
-    val creditList: List<Credit> = creditRepository.findAllByCustomerId(customerId)
-    //then
-    Assertions.assertThat(creditList).isNotEmpty
-    Assertions.assertThat(creditList.size).isEqualTo(2)
-    Assertions.assertThat(creditList).contains(credit1, credit2)
-  }
+    @BeforeEach
+    fun setUp() {
+        mockedCustomer = testEntityManager.persist(TestsUtils.buildCustomer(id = null))
+        mockCreditOne = testEntityManager.persist(TestsUtils.buildCredit(customer = mockedCustomer))
+        mockCreditTwo = testEntityManager.persist(TestsUtils.buildCredit(customer = mockedCustomer))
+    }
 
-  private fun buildCredit(
-    creditValue: BigDecimal = BigDecimal.valueOf(500.0),
-    dayFirstInstallment: LocalDate = LocalDate.of(2023, Month.APRIL, 22),
-    numberOfInstallments: Int = 5,
-    customer: Customer
-  ): Credit = Credit(
-    creditValue = creditValue,
-    dayFirstInstallment = dayFirstInstallment,
-    numberOfInstallments = numberOfInstallments,
-    customer = customer
-  )
-  private fun buildCustomer(
-    firstName: String = "Cami",
-    lastName: String = "Cavalcante",
-    cpf: String = "28475934625",
-    email: String = "camila@gmail.com",
-    password: String = "12345",
-    zipCode: String = "12345",
-    street: String = "Rua da Cami",
-    income: BigDecimal = BigDecimal.valueOf(1000.0),
-  ) = Customer(
-    firstName = firstName,
-    lastName = lastName,
-    cpf = cpf,
-    email = email,
-    password = password,
-    address = Address(
-      zipCode = zipCode,
-      street = street,
-    ),
-    income = income,
-  )
+    @Test
+    fun `findByCreditCode should return corresponding record from database`() {
+        val uuidOne = UUID.fromString("1f6ea2c7-d839-4d94-8c81-ab359c50478b")
+        mockCreditOne.creditCode = uuidOne
+
+        val uuidTwo = UUID.fromString("2c2f4cfe-6d8d-45a5-a524-b0ac978d1d42")
+        mockCreditTwo.creditCode = uuidTwo
+
+        val creditDbOne = creditRepository.findByCreditCode(uuidOne)
+        val creditDbTwo = creditRepository.findByCreditCode(uuidTwo)
+
+        assertThat(creditDbOne).isNotNull
+        assertThat(creditDbTwo).isNotNull
+        assertThat(creditDbOne).isSameAs(mockCreditOne)
+        assertThat(creditDbTwo).isSameAs(mockCreditTwo)
+    }
+
+    @Test
+    fun `findAllByCustomerId should return all credits from customer by informed customerId`() {
+        val customerId: Long = 1L
+        val creditList = creditRepository.findAllByCustomerId(customerId)
+
+        assertThat(creditList).isNotEmpty
+        assertThat(creditList.size).isEqualTo(2)
+        assertThat(creditList).contains(mockCreditOne, mockCreditTwo)
+    }
+
+    @Test
+    fun `findAllByCustomerId should return empty list when providing an invalid customerId`() {
+        val customerId: Long = 0L
+        val creditList = creditRepository.findAllByCustomerId(customerId)
+
+        assertThat(creditList).isEmpty()
+    }
+
 
 }
